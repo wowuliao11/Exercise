@@ -11,7 +11,7 @@ const app = express()
 
 app.use('/start', (request, response) => {
 	response.writeHead(200)
-	response.end('OK!\n')
+	response.end('OK!')
 	const data = Math.floor(Math.random() * 100)
 	client.set('r', data)
 	console.log(`randnum is:${data}`)
