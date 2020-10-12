@@ -16,15 +16,14 @@ app.use('/start', (request, response) => {
 	client.set('r', data)
 	console.log(`randnum is:${data}`)
 })
-app.use('/:number', (req, res) => {
+
+app.use('/:number', (req, res, next) => {
 	const number = Number(req.params.number)
 	client.get('r', (err, data) => {
 		const randnum = Number(data)
 		if (err) {
-			console.log(err)
-			return false
-		}
-		if (Number.isNaN(number) || Number.isNaN(randnum)) {
+			next(err)
+		} else if (Number.isNaN(number) || Number.isNaN(randnum)) {
 			res.writeHead(400)
 			res.end('400 error!')
 		} else if (number > randnum) {
@@ -40,4 +39,8 @@ app.use('/:number', (req, res) => {
 		return true
 	})
 })
-http.createServer(app).listen(Number(process.argv.splice(2)))
+
+app.use((err, req, res) => {
+	res.status(500).send(err.message)
+})
+http.createServer(app).listen(process.argv[2])
