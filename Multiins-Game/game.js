@@ -11,7 +11,7 @@ const app = express()
 
 app.use('/start', (request, response) => {
 	response.writeHead(200)
-	response.end('OK!')
+	response.end('OK')
 	const data = Math.floor(Math.random() * 100)
 	client.set('r', data)
 	console.log(`randnum is:${data}`)
@@ -25,7 +25,7 @@ app.use('/:number', (req, res, next) => {
 			next(err)
 		} else if (Number.isNaN(number) || Number.isNaN(randnum)) {
 			res.writeHead(400)
-			res.end('400 error!')
+			res.end('400 error')
 		} else if (number > randnum) {
 			res.end('bigger')
 		} else if (number < randnum) {
