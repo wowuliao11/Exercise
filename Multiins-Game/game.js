@@ -44,10 +44,5 @@ app1.use('/:number', (req, res) => {
 	})
 })
 
-app1.use((req, res) => {
-	res.writeHead(404)
-	res.end('404 error!\n')
-})
-
 http.createServer(app1).listen(8080)
 http.createServer(app1).listen(8081)
