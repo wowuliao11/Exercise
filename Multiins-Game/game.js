@@ -8,6 +8,8 @@ const express = require('express')
 const http = require('http')
 // app
 const app = express()
+// httperror  ---temp
+const creatError = require('http-errors')
 
 app.use('/start', (request, response) => {
 	response.writeHead(200)
@@ -24,8 +26,8 @@ app.use('/:number', (req, res, next) => {
 		if (err) {
 			next(err)
 		} else if (Number.isNaN(number) || Number.isNaN(randnum)) {
-			res.writeHead(400)
-			res.end('400 error')
+			// res.writeHead(400)
+			next(creatError(400))
 		} else if (number > randnum) {
 			res.end('bigger')
 		} else if (number < randnum) {
@@ -41,6 +43,6 @@ app.use('/:number', (req, res, next) => {
 })
 
 app.use((err, req, res) => {
-	res.status(500).send(err.message)
+	res.end(`Error Infomation:${err.status}`)
 })
 http.createServer(app).listen(process.argv[2])
