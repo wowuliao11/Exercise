@@ -14,7 +14,7 @@ const creatError = require('http-errors')
 app.use('/start', (request, response) => {
 	response.writeHead(200)
 	response.end('OK')
-	const data = Math.floor(Math.random() * 100)
+	const data = Math.floor(Math.random() * 1000000)
 	client.set('r', data)
 	console.log(`randnum is:${data}`)
 })
@@ -33,8 +33,8 @@ app.use('/:number', (req, res, next) => {
 		} else if (number < randnum) {
 			res.end('smaller')
 		} else {
-			const newrandnum = Math.floor(Math.random() * 100)
-			client.set('r', newrandnum)
+			// const newrandnum = Math.floor(Math.random() * 1000000)
+			// client.set('r', newrandnum)
 			res.end('equal')
 		}
 		res.end(`key:${data}`)
