@@ -11,10 +11,10 @@ function guessRinCallback(min, max, callback) {
 	const num = Math.floor((max + min) / 2)
 	request(`${API}${num}`, (err, res, body) => {
 		if (err) {
-			throw err
+			callback(err)
 		}
 		if (body === 'equal') {
-			callback(num)
+			callback(null, num)
 		}
 		if (body === 'smaller') {
 			return guessRinCallback(num, max, callback)
@@ -27,64 +27,51 @@ function guessRinCallback(min, max, callback) {
 }
 
 function guessRinPromise(min, max) {
-	return new Promise((resolve, reject) => {
-		const num = Math.floor((min + max) / 2)
-		request(`${API}${num}`, (err, res, body) => {
-			if (err) {
-				reject(err)
+	const num = Math.floor((min + max) / 2)
+	return rp(`${API}${num}`)
+		.then((response) => {
+			if (response === 'bigger') {
+				return guessRinPromise(min, num)
 			}
-			if (body === 'equal') {
-				resolve([true, num])
+			if (response === 'smaller') {
+				return guessRinPromise(num, max)
 			}
-			if (body === 'smaller') {
-				resolve([false, num, max])
-			}
-			if (body === 'bigger') {
-				resolve([false, min, num])
-			}
+			return num
 		})
-	}).then((data) => {
-		if (data[0]) {
-			return data[1]
-		}
-		return guessRinPromise(data[1], data[2])
-	})
 }
 
 async function guessRinSyncandAwaitWhile(minnum, maxnum) {
 	let min = minnum
 	let max = maxnum
-	let flag = true
-	while (flag) { // the output of one iteration might be used as the input to another
+
+	while (true) { // the output of one iteration might be used as the input to another
 		const num = Math.floor((min + max) / 2)
 		// eslint-disable-next-line no-await-in-loop
-		const body = await rp(`${API}${num}`)
-		if (body === 'equal') {
-			flag = false
+		const response = await rp(`${API}${num}`)
+		if (response === 'equal') {
 			return num
 		}
-		if (body === 'smaller') {
+		if (response === 'smaller') {
 			min = num
 		}
-		if (body === 'bigger') {
+		if (response === 'bigger') {
 			max = num
 		}
 	}
-	return false
 }
 async function guessRinSyncandAwaitRecursion(minnum, maxnum) {
 	let min = minnum
 	let max = maxnum
 	const num = Math.floor((min + max) / 2)
-	const body = await rp(`${API}${num}`)
-	if (body === 'equal') {
+	const response = await rp(`${API}${num}`)
+	if (response === 'equal') {
 		return num
 	}
-	if (body === 'smaller') {
+	if (response === 'smaller') {
 		min = num
 		return guessRinSyncandAwaitRecursion(min, max)
 	}
-	if (body === 'bigger') {
+	if (response === 'bigger') {
 		max = num
 		return guessRinSyncandAwaitRecursion(min, max)
 	}
@@ -93,13 +80,21 @@ async function guessRinSyncandAwaitRecursion(minnum, maxnum) {
 }
 
 async function test() {
-	await console.log(`AsynandAwait use while way: ${await guessRinSyncandAwaitWhile(MIN, MAX)}`)
-	await console.log(`AsynandAwait use recursion way: ${await guessRinSyncandAwaitRecursion(MIN, MAX)}`)
-	await guessRinCallback(MIN, MAX, (result) => {
-		console.log(`callback way: ${result}`)
+	console.log(`AsynandAwait use while way: ${await guessRinSyncandAwaitWhile(MIN, MAX)}`)
+	console.log(`AsynandAwait use recursion way: ${await guessRinSyncandAwaitRecursion(MIN, MAX)}`)
+	guessRinCallback(MIN, MAX, (err, result) => {
+		if (err) {
+			console.error(err)
+		} else {
+			console.log(`AsynandAwait use callback way: ${result}`)
+		}
 	})
-	guessRinPromise(MIN, MAX).then((result) => {
-		console.log(`promise way: ${result}`)
-	})
+	guessRinPromise(MIN, MAX)
+		.then((result) => {
+			console.log(`AsynandAwait use promise way:${result}`)
+		})
+		.catch((err) => {
+			console.error(err)
+		})
 }
 test()
