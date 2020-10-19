@@ -17,12 +17,11 @@ function guessRinCallback(min, max, callback) {
 			callback(null, num)
 		}
 		if (body === 'smaller') {
-			return guessRinCallback(num, max, callback)
+			guessRinCallback(num, max, callback)
 		}
 		if (body === 'bigger') {
-			return guessRinCallback(min, num, callback)
+			guessRinCallback(min, num, callback)
 		}
-		return false
 	})
 }
 
@@ -64,9 +63,7 @@ async function guessRinSyncandAwaitRecursion(minnum, maxnum) {
 	let max = maxnum
 	const num = Math.floor((min + max) / 2)
 	const response = await rp(`${API}${num}`)
-	if (response === 'equal') {
-		return num
-	}
+
 	if (response === 'smaller') {
 		min = num
 		return guessRinSyncandAwaitRecursion(min, max)
@@ -75,8 +72,7 @@ async function guessRinSyncandAwaitRecursion(minnum, maxnum) {
 		max = num
 		return guessRinSyncandAwaitRecursion(min, max)
 	}
-
-	return false
+	return num
 }
 
 async function test() {
