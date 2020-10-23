@@ -4,3 +4,5 @@ node_modules/
 .vscode/
 #redis
 dump.rdb
+#data
+data/
