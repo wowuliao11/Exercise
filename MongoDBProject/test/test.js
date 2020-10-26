@@ -5,6 +5,7 @@ const api = 'http://localhost:8080/'
 const MIN = 0
 const MAX = 1000001
 describe('test MongoDBProject in Positive', () => {
+	afterEach(() => rp(`${api}destroy`)) // remove session and record
 	it('Positive Test Case - regist', () => {
 		const options = {
 			method: 'POST',
@@ -46,14 +47,10 @@ describe('test MongoDBProject in Positive', () => {
 			},
 			json: true,
 		}
-		const results = []
 		return rp(options)
+			.then(() => rp(`${api}start`))
 			.then((result) => {
-				results.push(result)
-				return rp(`${api}start`)
-			})
-			.then((result) => {
-				result.should.eql('OK')
+				result.should.equal('OK')
 			})
 	})
 	it('Positive Test Case - play all game', () => {
@@ -79,30 +76,23 @@ describe('test MongoDBProject in Positive', () => {
 					return result
 				})
 		}
-		const results = []
 		return rp(options)
 			.then((result) => {
-				results.push(result)
+				result.should.equal('Hello user2')
 				return rp(`${api}start`)
 			})
 			.then((result) => {
-				results.push(result)
+				result.should.equal('OK')
 				return playgame(MIN, MAX)
 			})
 			.then((result) => {
-				results.push(result)
-				return rp(`${api}destroy`)
-			})
-			.then((result) => {
-				console.log(result)
-				results.pop().should.equal('equal')
-				results.pop().should.equal('OK')
-				results.pop().should.equal('Hello user2')
+				result.should.eql('equal')
 			})
 	})
 })
 
 describe('test MongoDBProject in Negtive', () => {
+	afterEach(() => rp(`${api}destroy`)) // remove session and record
 	it('Negtive Test Case - regist bad format', () => {
 		const options = {
 			method: 'POST',
@@ -208,19 +198,8 @@ describe('test MongoDBProject in Negtive', () => {
 				result.should.eql('Duplicate ID')
 			})
 	})
-	it('Negtive Test Case - Not logged in', () => {
-		const options = {
-			method: 'POST',
-			uri: `${api}start`,
-			form: {
-				name: 'admin',
-				password: 'admin',
-			},
-			json: true,
-		}
-		return rp(options)
-			.then((result) => {
-				result.should.eql('Not logged in')
-			})
-	})
+	it('Negtive Test Case - Not logged in', () => rp(`${api}start`)
+		.then((result) => {
+			result.should.eql('Not logged in')
+		}))
 })

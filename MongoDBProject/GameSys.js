@@ -97,22 +97,11 @@ dao.getDb(uri, 'game')
 			if (id === undefined || name === undefined) {
 				response.end('Not logged in')
 			} else {
-				service.findNumber(id)
-					.then((result) => {
-						if (result) {
-							console.log(`name:${name} id:${id}`)
-							const data = Math.floor(Math.random() * 1000000)
-							service.updateNumber(id, data)
-							console.log(`randnum is:${data}`)
-							response.end('OK')
-						} else {
-							console.log(`name:${name} id:${id}`)
-							const data = Math.floor(Math.random() * 1000000)
-							service.insertNumber(data, id)
-							console.log(`randnum is:${data}`)
-							response.end('OK')
-						}
-					})
+				console.log(`name:${name} id:${id}`)
+				const data = Math.floor(Math.random() * 1000000)
+				service.insertNumber(data, id)
+				console.log(`randnum is:${data}`)
+				response.end('OK')
 			}
 		})
 
@@ -146,9 +135,6 @@ dao.getDb(uri, 'game')
 				})
 		})
 
-		app.use((err, request, response) => {
-			response.end(`Error Infomation:${err.status}`)
-		})
 		MongoStoreIns.on('destroy', (sessionId) => {
 			console.log('destroy', sessionId)
 			service.deleteNumber(sessionId)

@@ -2,93 +2,75 @@
 const { MongoClient } = require('mongodb')
 
 const getDb = function getDb(url, dbName) { // get Collection
-	return new Promise((resolve, reject) => {
-		MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
-			if (err) {
-				client.close()
-				reject(err)
-			}
-
+	return MongoClient.connect(url, { useUnifiedTopology: true })
+		.then((client) => {
 			const db = client.db(dbName)
-			resolve({ db, client })
+			return { db, client }
 		})
-	})
+		.catch((err) => { console.log(err) })
 }
 const findDocuments = function findDocuments(db, document) { // Find some document
-	return new Promise((resolve, reject) => db
+	return db
 		.then((data) => {
 			const collection = data.db.collection(document)
-			collection.find({}).toArray((err, docs) => {
-				if (err) {
-					reject(err)
-				}
-
+			return collection.find({}).toArray().then((res) => {
 				data.client.close()
-				resolve(docs)
+				return res
 			})
-		}))
+				.catch((err) => { console.log(err) })
+		})
 }
 const findDocument = function findDocument(db, document, filter) { // find Document
 	// Get the documents collection
-	return new Promise((resolve, reject) => db
+	return db
 		.then((data) => {
 			const collection = data.db.collection(document)
-			collection.find(filter).toArray((err, docs) => {
-				if (err) {
-					reject(err)
-				}
-
+			return collection.find(filter).toArray().then((res) => {
 				data.client.close()
-				resolve(docs)
+				return res
 			})
-		}))
+				.catch((err) => { console.log(err) })
+		})
 }
 const insertDocument = function insertDocument(db, document, insertdata) {
 	// Get the documents collection
-	return new Promise((resolve, reject) => db
+	return db
 		.then((data) => {
 			const collection = data.db.collection(document)
 
-			collection.insertMany([insertdata,
-			], (err, result) => {
-				if (err) {
-					reject(err)
-				}
-
-				data.client.close()
-				resolve(result)
-			})
-		}))
+			return collection.save(insertdata)
+				.then((result) => {
+					data.client.close()
+					return result
+				})
+				.catch((err) => { console.log(err) })
+		})
 }
 const deleteDocument = function deleteDocument(db, document, condition) { // Delete Document
-	return new Promise((resolve, reject) => db
+	return db
 		.then((data) => {
 			const collection = data.db.collection(document)
-			collection.deleteOne(condition, (err, result) => {
-				if (err) {
-					reject(err)
-				}
-
-				data.client.close()
-				resolve(result)
-			})
-		}))
+			return collection.deleteOne(condition)
+				.then((result) => {
+					data.client.close()
+					return result
+				})
+				.catch((err) => { console.log(err) })
+		})
 }
 const updateDocument = function updateDocument(db, document, condition, newdata) {
 	// update Document
-	return new Promise((resolve, reject) => db
+	return db
 		.then((data) => {
 			const collection = data.db.collection(document)
-			collection.updateOne(condition,
-				{ $set: newdata }, (err, result) => {
-					if (err) {
-						reject(err)
-					}
-
+			return collection.updateOne(condition,
+				{ $set: newdata })
+				.then((result) => {
 					data.client.close()
-					resolve(result)
+					return result
 				})
-		}))
+				.catch((err) => { console.log(err) })
+		})
 }
 exports.updateDocument = updateDocument
 exports.deleteDocument = deleteDocument

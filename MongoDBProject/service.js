@@ -3,6 +3,8 @@ const md5 = require('md5-node')
 const dao = require('./dao')
 
 const insertUser = function (name, password) { // insert a User
+	if (name === null || password === null) throw new Error('wrong input')
+
 	const randomnum = Math.floor(Math.random() * 10000000)
 	const ciphertext = md5(name + randomnum + password)
 	dao.insertDocument(dao.getDb(uri, 'game'), 'user', { name, randomnum, ciphertext })
@@ -11,60 +13,62 @@ const insertUser = function (name, password) { // insert a User
 		})
 }
 const findUser = function findUser(name) { // find user if live
+	if (name === null) throw new Error('wrong input')
+
 	return dao.findDocument(dao.getDb(uri, 'game'), 'user', { name })
 		.then((result) => {
-			if (JSON.stringify(result) === '[]') return false
+			if (!result.length) return false
 			return true
 		})
 }
-const findNumber = function findNumber(userid) { // find number if live filter is userid
-	return dao.findDocument(dao.getDb(uri, 'game'), 'number', { userid })
+const findNumber = function findNumber(_id) { // find number if live filter is _id
+	if (_id === null) throw new Error('wrong input')
+
+	return dao.findDocument(dao.getDb(uri, 'game'), 'number', { _id })
 		.then((result) => {
-			if (JSON.stringify(result) === '[]') return false
+			console.log(`_id:      ${_id}     ${JSON.stringify(result)}`)
+			if (!result.length) return false
 			return true
 		})
 }
-const getNumber = function getNumber(userid) { // get number in Number filter is userid
-	return dao.findDocument(dao.getDb(uri, 'game'), 'number', { userid })
-		.then((result) => {
-			if (result[0] !== undefined) return result[0].number
-			return null
-		})
+const getNumber = function getNumber(_id) { // get number in Number filter is _id
+	if (_id === null) throw new Error('wrong input')
+
+	return dao.findDocument(dao.getDb(uri, 'game'), 'number', { _id })
+		.then((result) => (result[0] ? result[0].number : null))
 }
 const judgeLogin = function judgeLogin(name, password) { // judge longin infomation
-	if (findUser(name) === false) {
-		return null
-	}
+	if (findUser(name) === false) throw new Error('wrong input')
+
 	return dao.findDocument(dao.getDb(uri, 'game'), 'user', { name })
-		.then((result) => {
-			if (result[0].password === md5(name + result[0].salt + password)) return true
-			return false
-		})
+		.then((result) => result[0].password === md5(name + result[0].salt + password))
 }
-const insertNumber = function insertNumber(number, userid) { // insert number
-	if (number === null || userid === null) {
-		return null
-	}
-	return dao.insertDocument(dao.getDb(uri, 'game'), 'number', { userid, number })
+const insertNumber = function insertNumber(number, _id) { // insert number
+	if (number === null || _id === null) throw new Error('wrong input')
+
+	return dao.insertDocument(dao.getDb(uri, 'game'), 'number', { _id, number })
 		.then((result) => {
 			console.log(result)
 		})
 }
-const deleteNumber = function deleteNumber(userid) { // delete number
-	dao.findDocument(dao.getDb(uri, 'game'), 'number', { userid })
+const deleteNumber = function deleteNumber(_id) { // delete number
+	if (_id === null) throw new Error('wrong input')
+
+	dao.findDocument(dao.getDb(uri, 'game'), 'number', { _id })
 		.then((result) => {
-			if (JSON.stringify(result) === '[]') {
-				console.log('isnt this user\'s number')
-				return null
+			if (!result.length) {
+				throw new Error('isnt this user\'s number')
 			}
-			return dao.deleteDocument(dao.getDb(uri, 'game'), 'number', { userid })
+			return dao.deleteDocument(dao.getDb(uri, 'game'), 'number', { _id })
 		})
 		.then((result) => {
 			console.log(result)
 		})
 }
-const updateNumber = function updateNumber(userid, number) { // update number
-	dao.updateDocument(dao.getDb(uri, 'game'), 'number', { userid }, { userid, number })
+const updateNumber = function updateNumber(_id, number) { // update number
+	if (_id === null || number === null) throw new Error('wrong input')
+
+	dao.updateDocument(dao.getDb(uri, 'game'), 'number', { _id }, { _id, number })
 		.then(() => {
 			console.log('success updatenumber')
 		})
