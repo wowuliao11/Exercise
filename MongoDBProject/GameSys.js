@@ -32,6 +32,7 @@ dao.getDb(uri, 'game')
 		}))
 		// ----------------------------------listen-------------------------------------
 		app.use('/destroy', (request, response) => {
+			service.deleteNumber(request.session.id)
 			request.session.destroy()
 			response.end('destroy')
 		})
@@ -135,9 +136,5 @@ dao.getDb(uri, 'game')
 				})
 		})
 
-		MongoStoreIns.on('destroy', (sessionId) => {
-			console.log('destroy', sessionId)
-			service.deleteNumber(sessionId)
-		})
 		app.listen(8080)
 	})

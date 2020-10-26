@@ -1,17 +1,19 @@
 const rp = require('request-promise').defaults({ jar: true })
 require('should')
+const service = require('../service')
 
 const api = 'http://localhost:8080/'
 const MIN = 0
 const MAX = 1000001
 describe('test MongoDBProject in Positive', () => {
 	afterEach(() => rp(`${api}destroy`)) // remove session and record
-	it('Positive Test Case - regist', () => {
+	it('Positive Test Case - register', () => {
+		const name = 'newname'
 		const options = {
 			method: 'POST',
 			uri: `${api}register`,
 			form: {
-				name: 'newuser', // a new user
+				name, // a new user
 				password: 'admin',
 			},
 			json: true,
@@ -19,6 +21,7 @@ describe('test MongoDBProject in Positive', () => {
 		return rp(options)
 			.then((result) => {
 				result.should.eql('success create user!')
+				service.deleteUser(name) // remove register data
 			})
 	})
 	it('Positive Test Case - login', () => {

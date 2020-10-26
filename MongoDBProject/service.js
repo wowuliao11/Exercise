@@ -2,80 +2,124 @@ const uri = 'mongodb://root:admin@localhost:10086?retryWrites=true&w=majority'
 const md5 = require('md5-node')
 const dao = require('./dao')
 
-const insertUser = function (name, password) { // insert a User
+const db = dao.getDb(uri, 'game')
+function insertUser(name, password) { // insert a User
 	if (name === null || password === null) throw new Error('wrong input')
 
-	const randomnum = Math.floor(Math.random() * 10000000)
-	const ciphertext = md5(name + randomnum + password)
-	dao.insertDocument(dao.getDb(uri, 'game'), 'user', { name, randomnum, ciphertext })
+	const salt = Math.floor(Math.random() * 10000000)
+	const ciphertext = md5(name + salt + password)
+	dao.insertDocument(db, 'user', { name, salt, password: ciphertext })
 		.then((result) => {
 			console.log(result)
 		})
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const findUser = function findUser(name) { // find user if live
+
+function findUser(name) { // find user if live
 	if (name === null) throw new Error('wrong input')
 
-	return dao.findDocument(dao.getDb(uri, 'game'), 'user', { name })
+	return dao.findDocument(db, 'user', { name })
 		.then((result) => {
 			if (!result.length) return false
 			return true
 		})
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const findNumber = function findNumber(_id) { // find number if live filter is _id
+function findNumber(_id) { // find number if live filter is _id
 	if (_id === null) throw new Error('wrong input')
 
-	return dao.findDocument(dao.getDb(uri, 'game'), 'number', { _id })
+	return dao.findDocument(db, 'number', { _id })
 		.then((result) => {
 			console.log(`_id:      ${_id}     ${JSON.stringify(result)}`)
 			if (!result.length) return false
 			return true
 		})
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const getNumber = function getNumber(_id) { // get number in Number filter is _id
+function getNumber(_id) { // get number in Number filter is _id
 	if (_id === null) throw new Error('wrong input')
 
-	return dao.findDocument(dao.getDb(uri, 'game'), 'number', { _id })
+	return dao.findDocument(db, 'number', { _id })
 		.then((result) => (result[0] ? result[0].number : null))
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const judgeLogin = function judgeLogin(name, password) { // judge longin infomation
+function judgeLogin(name, password) { // judge longin infomation
 	if (findUser(name) === false) throw new Error('wrong input')
 
-	return dao.findDocument(dao.getDb(uri, 'game'), 'user', { name })
+	return dao.findDocument(db, 'user', { name })
 		.then((result) => result[0].password === md5(name + result[0].salt + password))
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const insertNumber = function insertNumber(number, _id) { // insert number
+function insertNumber(number, _id) { // insert number
 	if (number === null || _id === null) throw new Error('wrong input')
 
-	return dao.insertDocument(dao.getDb(uri, 'game'), 'number', { _id, number })
+	return dao.insertDocument(db, 'number', { _id, number })
 		.then((result) => {
 			console.log(result)
 		})
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const deleteNumber = function deleteNumber(_id) { // delete number
+function deleteNumber(_id) { // delete number
 	if (_id === null) throw new Error('wrong input')
 
-	dao.findDocument(dao.getDb(uri, 'game'), 'number', { _id })
+	dao.findDocument(db, 'number', { _id })
 		.then((result) => {
 			if (!result.length) {
 				throw new Error('isnt this user\'s number')
 			}
-			return dao.deleteDocument(dao.getDb(uri, 'game'), 'number', { _id })
+			return dao.deleteDocument(db, 'number', { _id })
 		})
 		.then((result) => {
 			console.log(result)
 		})
+		.catch((err) => {
+			console.log(err)
+		})
 }
-const updateNumber = function updateNumber(_id, number) { // update number
+function deleteUser(name) { // delete number
+	if (name === null) throw new Error('wrong input')
+
+	dao.findDocument(db, 'user', { name })
+		.then((result) => {
+			if (!result.length) {
+				throw new Error('isnt this user\'s user')
+			}
+			return dao.deleteDocument(db, 'user', { name })
+		})
+		.then((result) => {
+			console.log(result)
+		})
+		.catch((err) => {
+			console.log(err)
+		})
+}
+function updateNumber(_id, number) { // update number
 	if (_id === null || number === null) throw new Error('wrong input')
 
-	dao.updateDocument(dao.getDb(uri, 'game'), 'number', { _id }, { _id, number })
+	dao.updateDocument(db, 'number', { _id }, { _id, number })
 		.then(() => {
 			console.log('success updatenumber')
+		})
+		.catch((err) => {
+			console.log(err)
 		})
 }
 exports.getNumber = getNumber
 exports.updateNumber = updateNumber
 exports.deleteNumber = deleteNumber
+exports.deleteUser = deleteUser
 exports.insertNumber = insertNumber
 exports.findNumber = findNumber
 exports.insertUser = insertUser
