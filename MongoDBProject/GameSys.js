@@ -66,6 +66,9 @@ app.use('/login', urllencodedParser, (request, response) => {
 				response.end(`Hello ${name}`)
 			}
 		})
+		.catch((err) => {
+			console.log(err)
+		})
 	return null
 })
 
@@ -81,14 +84,21 @@ app.use('/register', urllencodedParser, (request, response) => {
 		response.end('bad format')
 	}
 
-	service.findUser(app.locals.db, name).then((result) => {
-		if (result === true) {
-			response.end('Duplicate ID')
-		} else {
-			service.insertUser(app.locals.db, name, password)
-			response.end('success create user!')
-		}
-	})
+	service.findUser(app.locals.db, name)
+		.then((result) => {
+			if (result === true) {
+				response.end('Duplicate ID')
+			} else {
+				service.insertUser(app.locals.db, name, password)
+					.catch((err) => {
+						console.log(err)
+					})
+				response.end('success create user!')
+			}
+		})
+		.catch((err) => {
+			console.log(err)
+		})
 	return null
 })
 
@@ -100,6 +110,9 @@ app.use('/start', (request, response) => {
 	} else {
 		const data = Math.floor(Math.random() * 1000000)
 		service.insertNumber(app.locals.db, data, id)
+			.catch((err) => {
+				console.log(err)
+			})
 		console.log(`randnum is:${data}`)
 		response.end('OK')
 	}
