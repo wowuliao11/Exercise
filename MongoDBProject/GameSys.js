@@ -3,12 +3,29 @@ const session = require('express-session')
 const MongoStore = require('connect-mongo')(session)
 const bodyParser = require('body-parser')
 const { MongoClient } = require('mongodb')
+const Ajv = require('ajv')
 const service = require('./service.js')
+
+const ajv = new Ajv({ allErrors: true })
 
 const urllencodedParser = bodyParser.urlencoded({ extended: false })
 const app = express()
 const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
-
+// -ajv
+const schema = {
+	properties: {
+		name: {
+			type: 'string',
+			minLength: 3,
+			maxLength: 14,
+		},
+		password: {
+			type: 'string',
+			minLength: 3,
+			maxLength: 14,
+		},
+	},
+}
 MongoClient.connect(uri, { useUnifiedTopology: true })
 	.then((client) => {
 		const db = client.db('game')
@@ -43,14 +60,10 @@ app.use('/login', urllencodedParser, (request, response) => {
 	if (!request.body) return response.sendStatus(400)
 	const { name } = request.body
 	const { password } = request.body
-	if (name === undefined || password === undefined) {
-		response.end('data undefined')
-	} else if (name === '' || password === '') {
-		response.end('coldn\'t empty')
-	} else if (name.length < 3 || name.length > 14
-		|| password.length < 3 || password.length > 14) {
-		response.end('bad format')
-	}
+
+	const validate = ajv.compile(schema)
+	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
+
 	service.findUser(app.locals.db, name)
 		.then((result) => {
 			if (result === false) {
@@ -77,12 +90,8 @@ app.use('/register', urllencodedParser, (request, response) => {
 	const { name } = request.body
 	const { password } = request.body
 
-	if (name === '' || password === '') {
-		response.end('coldn\'t empty')
-	} else if (name.length < 3 || name.length > 14
-		|| password.length < 3 || password.length > 14) {
-		response.end('bad format')
-	}
+	const validate = ajv.compile(schema)
+	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
 	service.findUser(app.locals.db, name)
 		.then((result) => {

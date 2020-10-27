@@ -1,10 +1,13 @@
 const rp = require('request-promise').defaults({ jar: true })
 require('should')
+const { MongoClient } = require('mongodb')
 const service = require('../service')
 
+const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
 const api = 'http://localhost:8080/'
 const MIN = 0
 const MAX = 1000001
+
 describe('test MongoDBProject in Positive', () => {
 	afterEach(() => rp(`${api}destroy`)) // remove session and record
 	it('Positive Test Case - register', () => {
@@ -21,7 +24,11 @@ describe('test MongoDBProject in Positive', () => {
 		return rp(options)
 			.then((result) => {
 				result.should.eql('success create user!')
-				service.deleteUser(name) // remove register data
+				MongoClient.connect(uri, { useUnifiedTopology: true })
+					.then((client) => {
+						const db = client.db('game')
+						service.deleteUser(db, name) // remove register data
+					})
 			})
 	})
 	it('Positive Test Case - login', () => {
@@ -108,7 +115,7 @@ describe('test MongoDBProject in Negtive', () => {
 		}
 		return rp(options)
 			.then((result) => {
-				result.should.eql('bad format')
+				result.should.eql('Invalid: data.name should NOT be shorter than 3 characters, data.password should NOT be shorter than 3 characters')
 			})
 	})
 	it('Negtive Test Case - login bad format', () => {
@@ -123,7 +130,7 @@ describe('test MongoDBProject in Negtive', () => {
 		}
 		return rp(options)
 			.then((result) => {
-				result.should.eql('bad format')
+				result.should.eql('Invalid: data.name should NOT be shorter than 3 characters, data.password should NOT be shorter than 3 characters')
 			})
 	})
 	it('Negtive Test Case - registe cloudnt empty', () => {
@@ -138,7 +145,7 @@ describe('test MongoDBProject in Negtive', () => {
 		}
 		return rp(options)
 			.then((result) => {
-				result.should.eql('coldn\'t empty')
+				result.should.eql('Invalid: data.name should NOT be shorter than 3 characters, data.password should NOT be shorter than 3 characters')
 			})
 	})
 	it('Negtive Test Case - login cloudnt empty', () => {
@@ -153,7 +160,7 @@ describe('test MongoDBProject in Negtive', () => {
 		}
 		return rp(options)
 			.then((result) => {
-				result.should.eql('coldn\'t empty')
+				result.should.eql('Invalid: data.name should NOT be shorter than 3 characters, data.password should NOT be shorter than 3 characters')
 			})
 	})
 	it('Negtive Test Case - login account is not exist', () => {
