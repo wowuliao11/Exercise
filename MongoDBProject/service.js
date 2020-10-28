@@ -11,7 +11,8 @@ function insertUser(db, name, password) { // insert a User
 	const ciphertext = md5(name + salt + password)
 	return dao.insertDocument(db, 'user', { name, salt, password: ciphertext })
 		.then((result) => {
-			console.log(result)
+			console.log('success insertUser')
+			return result
 		})
 }
 
@@ -44,21 +45,23 @@ function insertNumber(db, number, _id) { // insert number
 
 	return dao.insertDocument(db, 'number', { _id, number })
 		.then((result) => {
-			console.log(result)
+			console.log('success insertNumber')
+			return result
 		})
 }
 function deleteNumber(db, _id) { // delete number
 	if (_id === null) throw new Error('wrong input')
 
-	dao.findDocument(db, 'number', { _id })
+	return dao.findDocument(db, 'number', { _id })
 		.then((result) => {
 			if (!result.length) {
 				throw new Error('isnt this user\'s number')
 			}
 			return dao.deleteDocument(db, 'number', { _id })
-		})
-		.then((result) => {
-			console.log(result)
+				.then((res) => {
+					console.log('success deleteNumber')
+					return res
+				})
 		})
 }
 function deleteUser(db, name) { // delete number
@@ -70,17 +73,19 @@ function deleteUser(db, name) { // delete number
 				throw new Error('isnt this user\'s user')
 			}
 			return dao.deleteDocument(db, 'user', { name })
-		})
-		.then((result) => {
-			console.log(result)
+				.then((res) => {
+					console.log('success deleteUser')
+					return res
+				})
 		})
 }
 function updateNumber(db, _id, number) { // update number
 	if (_id === null || number === null) throw new Error('wrong input')
 
 	return dao.updateDocument(db, 'number', { _id }, { _id, number })
-		.then(() => {
-			console.log('success updatenumber')
+		.then((result) => {
+			console.log('success updateNumber')
+			return result
 		})
 }
 

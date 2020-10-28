@@ -31,37 +31,31 @@ MongoClient.connect(uri, { useUnifiedTopology: true })
 		const db = client.db('game')
 		app.locals.db = db
 	})
-
-const MongoStoreIns = new MongoStore({
-	db: app.locals.db,
-	url: uri,
-})
-
-app.use('/', express.static('pages'))
-
 app.use(session({
 	secret: 'foo',
 	rolling: true,
 	saveUninitialized: false,
 	resave: false,
-	store: MongoStoreIns,
+	store: new MongoStore({ url: uri }),
 	cookie: {
 		maxAge: 1000 * 300,
 	},
 	autoRemove: 'native',
 }))
+app.use('/', express.static('pages'))
+
 // ----------------------------------listen-------------------------------------
 app.use('/destroy', (request, response) => {
 	service.deleteNumber(app.locals.db, request.session.id)
 	request.session.destroy()
 	response.end('destroy')
 })
-app.use('/login', urllencodedParser, (request, response) => {
+app.use('/login', urllencodedParser, (request, response, next) => {
 	if (!request.body) return response.sendStatus(400)
 	const { name } = request.body
 	const { password } = request.body
-
 	const validate = ajv.compile(schema)
+
 	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
 	service.findUser(app.locals.db, name)
@@ -80,17 +74,18 @@ app.use('/login', urllencodedParser, (request, response) => {
 			}
 		})
 		.catch((err) => {
+			next(err)
 			console.log(err)
 		})
 	return null
 })
 
-app.use('/register', urllencodedParser, (request, response) => {
+app.use('/register', urllencodedParser, (request, response, next) => {
 	if (!request.body) return response.sendStatus(400)
 	const { name } = request.body
 	const { password } = request.body
-
 	const validate = ajv.compile(schema)
+
 	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
 	service.findUser(app.locals.db, name)
@@ -100,26 +95,30 @@ app.use('/register', urllencodedParser, (request, response) => {
 			} else {
 				service.insertUser(app.locals.db, name, password)
 					.catch((err) => {
+						next(err)
 						console.log(err)
 					})
 				response.end('success create user!')
 			}
 		})
 		.catch((err) => {
+			next(err)
 			console.log(err)
 		})
 	return null
 })
 
-app.use('/start', (request, response) => {
+app.use('/start', (request, response, next) => {
 	const { name } = request.session
 	const { id } = request.session
+
 	if (id === undefined || name === undefined) {
 		response.end('Not logged in')
 	} else {
 		const data = Math.floor(Math.random() * 1000000)
 		service.insertNumber(app.locals.db, data, id)
 			.catch((err) => {
+				next(err)
 				console.log(err)
 			})
 		console.log(`randnum is:${data}`)
@@ -131,6 +130,7 @@ app.use('/:number', (request, response, next) => {
 	const { name } = request.session
 	const { id } = request.session
 	const inputnumber = Number(request.params.number)
+
 	service.getNumber(app.locals.db, id)
 		.then((result) => {
 			if (id === undefined || name === undefined) {
@@ -152,9 +152,14 @@ app.use('/:number', (request, response, next) => {
 			response.end('equal')
 		})
 		.catch((err) => {
-			response.end()
 			next(err)
+			console.log(err)
 		})
+})
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+	console.error(err.stack)
+	res.status(500).end(`error 500\n${err}`)
 })
 
 app.listen(8080)
