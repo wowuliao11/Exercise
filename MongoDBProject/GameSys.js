@@ -11,8 +11,14 @@ const ajv = new Ajv({ allErrors: true })
 const urllencodedParser = bodyParser.urlencoded({ extended: false })
 const app = express()
 const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
-// -ajv
-const schema = {
+
+function awaitWrap(promise) { // function :handle async await Exception
+	return promise
+		.then((data) => [null, data])
+		.catch((err) => [err, null])
+}
+
+const schema = { // -ajv schema
 	properties: {
 		name: {
 			type: 'string',
@@ -26,12 +32,13 @@ const schema = {
 		},
 	},
 }
-MongoClient.connect(uri, { useUnifiedTopology: true })
+MongoClient.connect(uri, { useUnifiedTopology: true }) // express global : db
 	.then((client) => {
 		const db = client.db('game')
 		app.locals.db = db
 	})
-app.use(session({
+
+app.use(session({ // use session
 	secret: 'foo',
 	rolling: true,
 	saveUninitialized: false,
@@ -42,119 +49,89 @@ app.use(session({
 	},
 	autoRemove: 'native',
 }))
-app.use('/', express.static('pages'))
 
 // ----------------------------------listen-------------------------------------
-app.use('/destroy', (request, response) => {
+
+app.use('/', express.static('pages')) // config static resources
+
+app.use('/destroy', (request, response) => { // destroy session
 	service.deleteNumber(app.locals.db, request.session.id)
 	request.session.destroy()
 	response.end('destroy')
 })
-app.use('/login', urllencodedParser, (request, response, next) => {
-	if (!request.body) return response.sendStatus(400)
+app.use('/login', urllencodedParser, async (request, response, next) => { // judge login
 	const { name } = request.body
 	const { password } = request.body
 	const validate = ajv.compile(schema)
 
 	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
-	service.findUser(app.locals.db, name)
-		.then((result) => {
-			if (result === false) {
-				response.end('account is not exist')
-			}
-			return service.judgeLogin(app.locals.db, name, password)
-		})
-		.then((result) => {
-			if (result === false) {
-				response.end('wrong password')
-			} else {
-				request.session.name = name
-				response.end(`Hello ${name}`)
-			}
-		})
-		.catch((err) => {
-			next(err)
-			console.log(err)
-		})
-	return null
+	// find user of the name
+	const [err, userflag] = await awaitWrap(service.findUser(app.locals.db, name))
+	if (err) next(err)
+	if (userflag === false) response.end('account is not exist')
+
+	// judge the name and password for login
+	const [err2, loginflag] = await awaitWrap(service.judgeLogin(app.locals.db, name, password))
+	if (err2) next(err2)
+	if (loginflag === false) response.end('wrong password')
+
+	request.session.name = name
+	response.end(`Hello ${name}`)
 })
 
-app.use('/register', urllencodedParser, (request, response, next) => {
-	if (!request.body) return response.sendStatus(400)
+app.use('/register', urllencodedParser, async (request, response, next) => { // submit register
 	const { name } = request.body
 	const { password } = request.body
 	const validate = ajv.compile(schema)
 
 	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
-	service.findUser(app.locals.db, name)
-		.then((result) => {
-			if (result === true) {
-				response.end('Duplicate ID')
-			} else {
-				service.insertUser(app.locals.db, name, password)
-					.catch((err) => {
-						next(err)
-						console.log(err)
-					})
-				response.end('success create user!')
-			}
-		})
-		.catch((err) => {
-			next(err)
-			console.log(err)
-		})
-	return null
+	// find the user of the name
+	const [err, userflag] = await awaitWrap(service.findUser(app.locals.db, name))
+	if (err) next(err)
+	if (userflag) response.end('Duplicate ID')
+
+	// mongodb:isnert
+	const [err2] = await awaitWrap(service.insertUser(app.locals.db, name, password))
+	if (err2) next(err2)
+	response.end('success create user!')
 })
 
-app.use('/start', (request, response, next) => {
+app.use('/start', async (request, response, next) => { // generate the random number
 	const { name } = request.session
 	const { id } = request.session
 
-	if (id === undefined || name === undefined) {
-		response.end('Not logged in')
-	} else {
-		const data = Math.floor(Math.random() * 1000000)
-		service.insertNumber(app.locals.db, data, id)
-			.catch((err) => {
-				next(err)
-				console.log(err)
-			})
-		console.log(`randnum is:${data}`)
-		response.end('OK')
-	}
+	if (id === undefined || name === undefined) response.end('Not logged in')
+
+	const data = Math.floor(Math.random() * 1000000)
+
+	const [err] = await awaitWrap(service.insertNumber(app.locals.db, data, id)) // isnert into number
+	if (err) next(err)
+
+	console.log(`randnum is:${data}`)
+	response.end('OK')
 })
 
-app.use('/:number', (request, response, next) => {
+app.use('/:number', async (request, response, next) => { // determine the number size
 	const { name } = request.session
 	const { id } = request.session
 	const inputnumber = Number(request.params.number)
+	if (id === undefined || name === undefined) response.end('Not logged in')
 
-	service.getNumber(app.locals.db, id)
-		.then((result) => {
-			if (id === undefined || name === undefined) {
-				response.end('Not logged in')
-			} else if (!result) {
-				response.end('without start')
-			}
-			return service.getNumber(app.locals.db, id)
-		})
-		.then((result) => {
-			const r = result
-			if (Number.isNaN(inputnumber) || Number.isNaN(r)) {
-				response.end('input not a number')
-			} else if (inputnumber > r) {
-				response.end('bigger')
-			} else if (inputnumber < r) {
-				response.end('smaller')
-			}
-			response.end('equal')
-		})
-		.catch((err) => {
-			next(err)
-			console.log(err)
-		})
+	// get the number of the user
+	const [err, numberres] = await awaitWrap(service.getNumber(app.locals.db, id))
+	if (err) next(err)
+	if (!numberres) response.end('without start')
+
+	if (Number.isNaN(inputnumber) || Number.isNaN(numberres)) { // judge number
+		response.end('input not a number')
+	} else if (inputnumber > numberres) {
+		response.end('bigger')
+	} else if (inputnumber < numberres) {
+		response.end('smaller')
+	}
+	response.end('equal')
 })
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
