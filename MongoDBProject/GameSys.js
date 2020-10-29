@@ -10,13 +10,9 @@ const ajv = new Ajv({ allErrors: true })
 
 const urllencodedParser = bodyParser.urlencoded({ extended: false })
 const app = express()
-const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
+const router = new express.Router()
 
-function awaitWrap(promise) { // function :handle async await Exception
-	return promise
-		.then((data) => [null, data])
-		.catch((err) => [err, null])
-}
+const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
 
 const schema = { // -ajv schema
 	properties: {
@@ -37,7 +33,6 @@ MongoClient.connect(uri, { useUnifiedTopology: true }) // express global : db
 		const db = client.db('game')
 		app.locals.db = db
 	})
-
 app.use(session({ // use session
 	secret: 'foo',
 	rolling: true,
@@ -51,15 +46,32 @@ app.use(session({ // use session
 }))
 
 // ----------------------------------listen-------------------------------------
+app.use(router)
 
-app.use('/', express.static('pages')) // config static resources
+app.use = (...data) => { // global exception catch
+	const params = []
+	data.forEach((item) => {
+		if (Object.prototype.toString.call(item) !== '[object AsyncFunction]') { // determine the function reference type
+			params.push(item) // push param which is not the asyn Function
+		} else {
+			const handle = function (...data2) { // packaging all of the AsyncFuction to catch exception
+				const [req, res, next] = data2
+				item(req, res, next).then(next).catch(next)
+			}
+			params.push(handle)
+		}
+	})
+	router.use(...params) // to avoid recursion, use different routes
+}
+
+app.use(express.static('pages')) // config static resources
 
 app.use('/destroy', (request, response) => { // destroy session
 	service.deleteNumber(app.locals.db, request.session.id)
 	request.session.destroy()
 	response.end('destroy')
 })
-app.use('/login', urllencodedParser, async (request, response, next) => { // judge login
+app.use('/login', urllencodedParser, async (request, response) => { // judge login
 	const { name } = request.body
 	const { password } = request.body
 	const validate = ajv.compile(schema)
@@ -67,20 +79,18 @@ app.use('/login', urllencodedParser, async (request, response, next) => { // jud
 	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
 	// find user of the name
-	const [err, userflag] = await awaitWrap(service.findUser(app.locals.db, name))
-	if (err) next(err)
+	const userflag = await service.findUser(app.locals.db, name)
 	if (userflag === false) response.end('account is not exist')
 
 	// judge the name and password for login
-	const [err2, loginflag] = await awaitWrap(service.judgeLogin(app.locals.db, name, password))
-	if (err2) next(err2)
+	const loginflag = await service.judgeLogin(app.locals.db, name, password)
 	if (loginflag === false) response.end('wrong password')
 
 	request.session.name = name
 	response.end(`Hello ${name}`)
 })
 
-app.use('/register', urllencodedParser, async (request, response, next) => { // submit register
+app.use('/register', urllencodedParser, async (request, response) => { // submit register
 	const { name } = request.body
 	const { password } = request.body
 	const validate = ajv.compile(schema)
@@ -88,17 +98,15 @@ app.use('/register', urllencodedParser, async (request, response, next) => { // 
 	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
 
 	// find the user of the name
-	const [err, userflag] = await awaitWrap(service.findUser(app.locals.db, name))
-	if (err) next(err)
+	const userflag = await service.findUser(app.locals.db, name)
 	if (userflag) response.end('Duplicate ID')
 
 	// mongodb:isnert
-	const [err2] = await awaitWrap(service.insertUser(app.locals.db, name, password))
-	if (err2) next(err2)
+	await service.insertUser(app.locals.db, name, password)
 	response.end('success create user!')
 })
 
-app.use('/start', async (request, response, next) => { // generate the random number
+app.use('/start', async (request, response) => { // generate the random number
 	const { name } = request.session
 	const { id } = request.session
 
@@ -106,22 +114,20 @@ app.use('/start', async (request, response, next) => { // generate the random nu
 
 	const data = Math.floor(Math.random() * 1000000)
 
-	const [err] = await awaitWrap(service.insertNumber(app.locals.db, data, id)) // isnert into number
-	if (err) next(err)
+	await service.insertNumber(app.locals.db, data, id) // isnert into number
 
 	console.log(`randnum is:${data}`)
 	response.end('OK')
 })
 
-app.use('/:number', async (request, response, next) => { // determine the number size
+app.use('/:number', async (request, response) => { // determine the number size
 	const { name } = request.session
 	const { id } = request.session
 	const inputnumber = Number(request.params.number)
 	if (id === undefined || name === undefined) response.end('Not logged in')
 
 	// get the number of the user
-	const [err, numberres] = await awaitWrap(service.getNumber(app.locals.db, id))
-	if (err) next(err)
+	const numberres = await service.getNumber(app.locals.db, id)
 	if (!numberres) response.end('without start')
 
 	if (Number.isNaN(inputnumber) || Number.isNaN(numberres)) { // judge number
