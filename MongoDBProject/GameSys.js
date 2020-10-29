@@ -7,13 +7,17 @@ const Ajv = require('ajv')
 const service = require('./service.js')
 
 const ajv = new Ajv({ allErrors: true })
-
 const urllencodedParser = bodyParser.urlencoded({ extended: false })
 const app = express()
-const router = new express.Router()
 
 const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
-
+function asyncHandler(fn) { // A package function that handles async function errors
+	return function (req, res, next) {
+		return Promise.resolve()
+			.then(() => fn(req, res, next))
+			.catch(next)
+	}
+}
 const schema = { // -ajv schema
 	properties: {
 		name: {
@@ -46,23 +50,6 @@ app.use(session({ // use session
 }))
 
 // ----------------------------------listen-------------------------------------
-app.use(router)
-
-app.use = (...data) => { // global exception catch
-	const params = []
-	data.forEach((item) => {
-		if (Object.prototype.toString.call(item) !== '[object AsyncFunction]') { // determine the function reference type
-			params.push(item) // push param which is not the asyn Function
-		} else {
-			const handle = function (...data2) { // packaging all of the AsyncFuction to catch exception
-				const [req, res, next] = data2
-				item(req, res, next).then(next).catch(next)
-			}
-			params.push(handle)
-		}
-	})
-	router.use(...params) // to avoid recursion, use different routes
-}
 
 app.use(express.static('pages')) // config static resources
 
@@ -71,7 +58,8 @@ app.use('/destroy', (request, response) => { // destroy session
 	request.session.destroy()
 	response.end('destroy')
 })
-app.use('/login', urllencodedParser, async (request, response) => { // judge login
+
+app.use('/login', urllencodedParser, asyncHandler(async (request, response) => { // judge login
 	const { name } = request.body
 	const { password } = request.body
 	const validate = ajv.compile(schema)
@@ -88,9 +76,9 @@ app.use('/login', urllencodedParser, async (request, response) => { // judge log
 
 	request.session.name = name
 	response.end(`Hello ${name}`)
-})
+}))
 
-app.use('/register', urllencodedParser, async (request, response) => { // submit register
+app.use('/register', urllencodedParser, asyncHandler(async (request, response) => { // submit register
 	const { name } = request.body
 	const { password } = request.body
 	const validate = ajv.compile(schema)
@@ -104,9 +92,9 @@ app.use('/register', urllencodedParser, async (request, response) => { // submit
 	// mongodb:isnert
 	await service.insertUser(app.locals.db, name, password)
 	response.end('success create user!')
-})
+}))
 
-app.use('/start', async (request, response) => { // generate the random number
+app.use('/start', asyncHandler(async (request, response) => { // generate the random number
 	const { name } = request.session
 	const { id } = request.session
 
@@ -118,9 +106,9 @@ app.use('/start', async (request, response) => { // generate the random number
 
 	console.log(`randnum is:${data}`)
 	response.end('OK')
-})
+}))
 
-app.use('/:number', async (request, response) => { // determine the number size
+app.use('/:number', asyncHandler(async (request, response) => { // determine the number size
 	const { name } = request.session
 	const { id } = request.session
 	const inputnumber = Number(request.params.number)
@@ -138,11 +126,14 @@ app.use('/:number', async (request, response) => { // determine the number size
 		response.end('smaller')
 	}
 	response.end('equal')
-})
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-	console.error(err.stack)
-	res.status(500).end(`error 500\n${err}`)
-})
+}))
 
+app.use((err, req, res, next) => {
+	if (err.message === 'access denied') {
+		console.error(err.stack)
+		res.status(500).end(`error 500\n${err}`)
+	}
+
+	next(err)
+})
 app.listen(8080)
