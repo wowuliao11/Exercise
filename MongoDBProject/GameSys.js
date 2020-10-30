@@ -13,9 +13,7 @@ const app = express()
 const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
 function asyncHandler(fn) { // A package function that handles async function errors
 	return function (req, res, next) {
-		return Promise.resolve()
-			.then(() => fn(req, res, next))
-			.catch(next)
+		fn(req, res, next).catch(next)
 	}
 }
 const schema = { // -ajv schema
