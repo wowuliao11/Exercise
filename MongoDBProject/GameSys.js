@@ -7,17 +7,11 @@ const Ajv = require('ajv')
 const service = require('./service.js')
 
 const ajv = new Ajv({ allErrors: true })
-const urllencodedParser = bodyParser.urlencoded({ extended: false })
+const urlencodedParser = bodyParser.urlencoded({ extended: false })
 const app = express()
 
 const uri = 'mongodb://root:admin@localhost:10086/game?retryWrites=true&w=majority'
-function asyncHandler(fn) { // A package function that handles async function errors
-	return function (req, res, next) {
-		return Promise.resolve()
-			.then(() => fn(req, res, next))
-			.catch(next)
-	}
-}
+
 const schema = { // -ajv schema
 	properties: {
 		name: {
@@ -32,6 +26,18 @@ const schema = { // -ajv schema
 		},
 	},
 }
+
+function asyncHandler(fn) { // A package function that handles async function errors
+	return function (req, res, next) {
+		fn(req, res, next).catch(next)
+	}
+}
+function validateUser(user, response) {
+	const validate = ajv.compile(schema)
+
+	if (!validate(user)) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
+}
+
 MongoClient.connect(uri, { useUnifiedTopology: true }) // express global : db
 	.then((client) => {
 		const db = client.db('game')
@@ -50,7 +56,6 @@ app.use(session({ // use session
 }))
 
 // ----------------------------------listen-------------------------------------
-
 app.use(express.static('pages')) // config static resources
 
 app.use('/destroy', (request, response) => { // destroy session
@@ -59,12 +64,11 @@ app.use('/destroy', (request, response) => { // destroy session
 	response.end('destroy')
 })
 
-app.use('/login', urllencodedParser, asyncHandler(async (request, response) => { // judge login
+app.use('/login', urlencodedParser, asyncHandler(async (request, response) => { // judge login
 	const { name } = request.body
 	const { password } = request.body
-	const validate = ajv.compile(schema)
 
-	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
+	validateUser({ name, password }, response)
 
 	// find user of the name
 	const userflag = await service.findUser(app.locals.db, name)
@@ -78,12 +82,11 @@ app.use('/login', urllencodedParser, asyncHandler(async (request, response) => {
 	response.end(`Hello ${name}`)
 }))
 
-app.use('/register', urllencodedParser, asyncHandler(async (request, response) => { // submit register
+app.use('/register', urlencodedParser, asyncHandler(async (request, response) => { // submit register
 	const { name } = request.body
 	const { password } = request.body
-	const validate = ajv.compile(schema)
 
-	if (!validate({ name, password })) response.end(`Invalid: ${ajv.errorsText(validate.errors)}`)
+	validateUser({ name, password }, response)
 
 	// find the user of the name
 	const userflag = await service.findUser(app.locals.db, name)

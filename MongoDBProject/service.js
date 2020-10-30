@@ -1,9 +1,6 @@
 const md5 = require('md5-node')
 const dao = require('./dao')
 
-// const db = dao.getDb(uri, 'game')
-
-// const resoursePro = dbpool.acquire()
 function insertUser(db, name, password) { // insert a User
 	if (name === null || password === null) throw new Error('wrong input')
 
